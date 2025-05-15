@@ -1,0 +1,29 @@
+#define clone3 435
+
+POLICY sandbox {
+  ERRNO(1) {
+    fork,
+    clone,
+    clone3,
+
+    shmget,
+    shmctl,
+    shmat,
+    shmdt,
+
+    mq_open,
+    mq_timedsend,
+    mq_timedreceive,
+    mq_unlink,
+    mq_notify,
+    mq_getsetattr,
+
+    memfd_create,
+
+    semget,
+    semctl,
+    semop
+  }
+}
+
+USE sandbox DEFAULT ALLOW
