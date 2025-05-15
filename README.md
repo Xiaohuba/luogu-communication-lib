@@ -14,7 +14,7 @@ Just copy paste `luogu-communication-lib.h` on the top of your grader!
 
 Write your grader in a function (lambda expression is also ok).
 
-You can call `Communication::SubProcess::safe_invoke()` to create a subprocess.
+You can call `Communication::SubProcess::safe_invoke()` to create a subprocess. This function return `std::unique_ptr<Communication::SubProcess>`. Use `COMMUNICATION_LIB_REGISTER_GRADER` to mark it as the grader.
 
 Given a subprocess `x`, you can write to `x.fout` (which can be read via stdin of `x`), and read from `x.fin` (which contains the staff `x` writes to its stdout).
 
@@ -23,6 +23,8 @@ You can call `x.guard()` to wait for `x` to exit normally. If it does not exit n
 All subprocesses that are not guarded will be automatically guarded before the grader exits.
 
 ## security
+
+First the grader will close all opened file descriptors except stdin and stdout.
 
 Each time a subprocess is invoked, it will run from the beginning, to avoid any attempt to store information in global variables.
 

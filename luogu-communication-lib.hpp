@@ -1,6 +1,9 @@
+#include <cstring>
+#include <experimental/filesystem>
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <memory>
 #include <set>
 #include <string>
 #include <tuple>
@@ -8,9 +11,12 @@
 
 #include <ext/stdio_filebuf.h>
 
+#include <dirent.h>
 #include <linux/filter.h>
+#include <linux/limits.h>
 #include <linux/seccomp.h>
 #include <sys/prctl.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -19,6 +25,22 @@ extern char **environ;
 namespace {
 namespace CommunicationLib {
 
+void sanitize_fd() {
+  DIR *dir = opendir("/proc/self/fd");
+  if (!dir) {
+    perror("opendir");
+    exit(EXIT_FAILURE);
+  }
+  dirent *entry;
+  while ((entry = readdir(dir)) != nullptr) {
+    if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+      continue;
+    int fd = atoi(entry->d_name);
+    if (fd != STDIN_FILENO && fd != STDOUT_FILENO)
+      close(fd);
+  }
+  closedir(dir);
+}
 void setupSeccomp() {
   sock_filter filter[] = {
       BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, arch)),
@@ -68,6 +90,8 @@ struct SubProcess {
 
 public:
   SubProcess() = delete;
+  SubProcess(SubProcess &&x) = delete;
+  SubProcess(const SubProcess &) = delete;
   std::istream fin;
   std::ostream fout;
   void guard() const {
@@ -79,7 +103,7 @@ public:
       exit(EXIT_FAILURE);
     pids.erase(_pid);
   }
-  static SubProcess safe_invoke() {
+  static std::unique_ptr<SubProcess> safe_invoke() {
     int i_pipe_fd[2], o_pipe_fd[2];
     if (pipe(i_pipe_fd) == -1)
       perror("pipe"), exit(EXIT_FAILURE);
@@ -97,7 +121,7 @@ public:
       perror("execve"), exit(EXIT_FAILURE);
     } else {
       close(i_pipe_fd[1]), close(o_pipe_fd[0]);
-      return {pid, i_pipe_fd[0], o_pipe_fd[1]};
+      return std::make_unique<SubProcess>(pid, i_pipe_fd[0], o_pipe_fd[1]);
     }
   }
 };
@@ -114,6 +138,7 @@ public:
       for (auto i = 0; environ[i] != NULL; i++)                                \
         flg |= environ[i] == "IS_CHILD_PROCESS=1"s;                            \
       if (!flg) {                                                              \
+        CommunicationLib::sanitize_fd();                                       \
         grader();                                                              \
         exit(0);                                                               \
       }                                                                        \
