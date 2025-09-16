@@ -20,6 +20,11 @@ POLICY sandbox {
 
     memfd_create,
 
+    msgget,
+    msgsnd,
+    msgrcv,
+    msgctl,
+
     semget,
     semctl,
     semop

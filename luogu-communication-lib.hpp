@@ -1,5 +1,4 @@
 #include <cstring>
-#include <experimental/filesystem>
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -25,6 +24,8 @@ extern char **environ;
 namespace {
 namespace CommunicationLib {
 
+using namespace std::string_literals;
+
 void sanitize_fd() {
   DIR *dir = opendir("/proc/self/fd");
   if (!dir) {
@@ -33,7 +34,7 @@ void sanitize_fd() {
   }
   dirent *entry;
   while ((entry = readdir(dir)) != nullptr) {
-    if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+    if (entry->d_name == "."s || entry->d_name == ".."s)
       continue;
     int fd = atoi(entry->d_name);
     if (fd != STDIN_FILENO && fd != STDOUT_FILENO)
@@ -54,7 +55,7 @@ void setupSeccomp() {
       BPF_JUMP(BPF_JMP | BPF_JGE | BPF_K, 0x3au, 8, 7),
       BPF_JUMP(BPF_JMP | BPF_JGE | BPF_K, 0x13fu, 3, 0),
       BPF_JUMP(BPF_JMP | BPF_JGE | BPF_K, 0xf0u, 1, 0),
-      BPF_JUMP(BPF_JMP | BPF_JGE | BPF_K, 0x44u, 5, 4),
+      BPF_JUMP(BPF_JMP | BPF_JGE | BPF_K, 0x48u, 5, 4),
       BPF_JUMP(BPF_JMP | BPF_JGE | BPF_K, 0xf6u, 4, 3),
       BPF_JUMP(BPF_JMP | BPF_JGE | BPF_K, 0x1b3u, 1, 0),
       BPF_JUMP(BPF_JMP | BPF_JGE | BPF_K, 0x140u, 2, 1),
